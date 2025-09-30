@@ -1,6 +1,6 @@
 import express from "express";
 import filmsRouter from "./routes/films";
-
+import { Request } from "express";
 
 
 
@@ -36,7 +36,7 @@ app.use((req, _res, next)=> {
 
 const count = new Map<string, number>();
 
-app.use((req, _res, next) =>{
+app.use((req, res, next) =>{
 
     const key = req.method + " " + req.path;
     const currentCount = count.get(key) ?? 0;

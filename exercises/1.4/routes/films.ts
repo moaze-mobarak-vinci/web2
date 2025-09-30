@@ -119,10 +119,150 @@ filmsRouter.post("/", (req, res)=> {
 });
 
 
+filmsRouter.delete("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const index = films.findIndex((film) => film.id === id);
+  if (index === -1) {
+    return res.sendStatus(404);
+  }
+  const deletedElements = films.splice(index, 1); // splice() returns an array of the deleted elements
+  return res.json(deletedElements[0]);
+});
+
+
+filmsRouter.patch("/:id", (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid id." });
+  }
+
+
+
+  const film = films.find((film) => film.id === id);
+  if (!film) {
+    return res.sendStatus(404);
+  }
+
+  const body: unknown = req.body;
+
+ if (
+    !body ||
+    typeof body !== "object" ||
+    !("title" in body) ||
+    !("director" in body) ||
+    !("duration" in body) ||
+    !("budget" in body) ||
+    !("description" in body) ||
+    !("imageUrl" in body) ||
+    typeof body.title !== "string" ||
+    typeof body.director !== "string" ||
+    typeof body.duration !== "number" ||
+    typeof body.budget !== "number" ||
+    typeof body.description !== "string" ||
+    typeof body.imageUrl !== "string" ||
+    !body.title.trim() ||
+    !body.director.trim() ||
+    !body.director.trim()) {
+    return res.sendStatus(400);
+  }
+
+  const payload = body as Partial<NewFilm>;
+  const { title, director, duration, budget, description, imageUrl } = payload;
+
+  if (title) {
+    film.title = title;
+  }
+  if (director) {
+    film.director = director;
+  }
+  if (duration) {
+    film.duration = duration;
+  }
+  if (budget) {
+    film.budget = budget;
+  }
+
+  if (description) {
+    film.description = description;
+  }
+  if (imageUrl) {
+    film.imageUrl = imageUrl;
+  }
+
+  return res.json(film);
+});
 
 
 
 
+filmsRouter.put("/:id", (req, res) => {
+
+  const id = Number(req.params.id);
+
+  if(!Number.isInteger(id) || id <= 0){
+    return res.status(400).json("Id must be a positive number");
+  }
+
+  const index = films.findIndex(f => f.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: "Film not found" });
+  }
+
+  const body: unknown = req.body;
+  if (!body || typeof body !== "object") {
+    return res.status(400).json({ error: "Body must be an object" });
+  }
+
+
+  const {
+    title,
+    director,
+    duration,
+    budget,
+    description,
+    imageUrl,
+  } = body as Partial<NewFilm>; // NewFilm est censé être Film sans id
+
+  if (
+    typeof title !== "string" || !title.trim() ||
+    typeof director !== "string" || !director.trim() ||
+    typeof description !== "string" || !description.trim() ||
+    typeof imageUrl !== "string" || !imageUrl.trim() ||
+    typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0 ||
+    typeof budget !== "number" || !Number.isFinite(budget) || budget < 0
+  ) {
+    return res.status(400).json({ error: "Invalid payload for full replacement" });
+  }
+
+
+
+  // Conflit : un autre film avec le même (title + director)
+  const nextTitle = title.trim();
+  const nextDirector = director.trim();
+
+  const conflict = films.some(
+    f =>
+      f.id !== id &&
+      f.title.trim().toLowerCase() === nextTitle.toLowerCase() &&
+      f.director.trim().toLowerCase() === nextDirector.toLowerCase()
+  );
+  if (conflict) {
+    return res.status(409).json({ error: "Film with same title and director already exists" });
+  }
+
+  const updated = {
+    id,
+    title: nextTitle,
+    director: nextDirector,
+    duration,
+    budget,
+    description: description.trim(),
+    imageUrl: imageUrl.trim(),
+  } as films;
+
+  films[index] = updated;
+  return res.status(200).json(updated);
+});
 
 
 
