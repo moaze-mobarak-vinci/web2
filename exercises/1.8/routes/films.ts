@@ -1,10 +1,13 @@
 import { Router } from "express";
-import { films } from "../types";
+import { films as defaultFilms } from "../types";
 import { NewFilm } from "../types";
+import path from "node:path";
+import { parse, serialize } from "../utils/json";
+const jsonDbPath = path.join(__dirname, "/../data/films.json");
 
 const filmsRouter = Router();
 
-const films: films[] = [
+const defaultFilms: defaultFilms[] = [
   {
     id: 1,
     title: "Inception",
@@ -34,15 +37,20 @@ const films: films[] = [
   },
 ];
 
+filmsRouter.get("/", (_req, res) => {
+  const films = parse(jsonDbPath, defaultFilms);
+  return res.json(films);
+});
 
 
 
-filmsRouter.get("/", (req, res) => {
+filmsRouter.get("/films", (req, res) => {
+  
 
 const minStr = req.query["minimum-duration"];
 
 if(minStr === undefined){
-  return res.status(200).json(films);
+  return res.status(200).json(defaultFilms);
 }
 
 const min = Number(minStr);
@@ -51,7 +59,7 @@ if(!Number.isFinite(min) || min < 0){
 }
 
 
-const result = films.filter(f => f.duration >= min);
+const result = defaultFilms.filter(f => f.duration >= min);
 return res.status(200).json(result);
 });
 
@@ -59,12 +67,19 @@ return res.status(200).json(result);
 filmsRouter.get("/films/:id", (req, res) => {
 
   const id = parseInt(req.params.id);
+  const films = parse(jsonDbPath, defaultFilms);
+
 
   if(isNaN(id)) {
     return res.status(400).json({error : "The provided id is not valid."});
   }
   
   const result = films.find(f => f.id === id);
+  if(!result) {
+    return res.status(404).json();
+  }
+
+
   return res.status(200).json(result);
 });
 
@@ -89,19 +104,21 @@ filmsRouter.post("/", (req, res)=> {
     typeof body.imageUrl !== "string" ||
     !body.title.trim() ||
     !body.director.trim() ||
-    !body.director.trim()) {
+    !body.description.trim() ||
+    !body.imageUrl.trim()) {
     return res.sendStatus(400);
   }
 
   const { title, director, duration, budget, description, imageUrl } = body as NewFilm;
 
+  const films = parse(jsonDbPath, defaultFilms);
 // Compute the next unique id by scanning the drinks array, 
 // finding the highest current id, and adding 1
 //"reduce" browse in all the drinks array,
   const nextId =
-    films.reduce((maxId, films) => (films.id > maxId ? films.id : maxId), 0) + 1;
+    defaultFilms.reduce((maxId, films) => (films.id > maxId ? films.id : maxId), 0) + 1;
 
-  const nFilm: films = {
+  const nFilm: defaultFilms = {
     id: nextId,
     title,
     director,
@@ -111,9 +128,25 @@ filmsRouter.post("/", (req, res)=> {
     imageUrl
   };
 
-  films.push(nFilm);
-  return res.json(nFilm);
+  // Vérifier si un film existe déjà avec le même titre et réalisateur
+  //films.some() return true si au moins un elt du tableau films respecte la condition en paramètre de some();
+const alreadyExists = defaultFilms.some(
+  f => f.title.toLowerCase() === title.trim().toLowerCase() &&
+       f.director.toLowerCase() === director.trim().toLowerCase()
+);
+
+if (alreadyExists) {
+  return res.status(409).json({ error: "Film already exists." });
+}
+
+  defaultFilms.push(nFilm);
+  serialize(jsonDbPath, defaultFilms);
+  return res.status(201).json(nFilm);
 });
+
+
+
+
 
 
 
