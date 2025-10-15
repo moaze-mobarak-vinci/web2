@@ -1,4 +1,4 @@
-import logo from "./assets/images/js-logo.png";
+import logo from "../../assets/images/js-logo.png";
 import "./Footer.css";
 
 
